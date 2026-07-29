@@ -1,0 +1,37 @@
+filebeat.inputs:
+  - type: filestream
+    id: siem-logs
+    enabled: true
+    paths:
+      - /var/log/siem/*.log
+      - /var/log/siem/**/*.json
+    parsers:
+      - ndjson:
+          keys_under_root: true
+          add_error_key: true
+          overwrite_keys: true
+          expand_keys: true
+    fields:
+      log_source: "generic"
+    fields_under_root: true
+
+  # Zeek conn/dns/http logs (tsv, tab-separated) — split into their own input
+  # so we can tag them distinctly for Sigma rule matching later
+  - type: filestream
+    id: zeek-logs
+    enabled: true
+    paths:
+      - /var/log/siem/zeek/*.log
+    fields:
+      log_source: "zeek"
+    fields_under_root: true
+
+output.logstash:
+  hosts: ["logstash:5044"]
+
+logging.level: info
+logging.to_files: true
+logging.files:
+  path: /usr/share/filebeat/logs
+  name: filebeat
+  keepfiles: 7
