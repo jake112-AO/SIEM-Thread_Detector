@@ -21,7 +21,7 @@ filebeat.inputs:
     id: zeek-logs
     enabled: true
     paths:
-      - /var/log/siem/zeek/*.log
+      - /var/log/siem/zeek/**/*.log
     fields:
       log_source: "zeek"
     fields_under_root: true
