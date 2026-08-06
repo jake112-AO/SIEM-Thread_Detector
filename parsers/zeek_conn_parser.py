@@ -1,10 +1,12 @@
 import json
+import sys
+sys.path.append("pipeline")
+from es_writer import get_client, send_event
 from datetime import datetime, timezone
+from ecs_normalizer import normalize_to_ecs
 
 LOG_FILE = "logs/zeek/bruteforce/conn.log"
 
-# Only Zeek columns we actually care about get mapped to ECS names.
-# Anything not in this dict just gets dropped.
 FIELD_MAP = {
     "ts": "@timestamp",
     "id.orig_h": "source.ip",
@@ -28,39 +30,41 @@ def parse_zeek_log(path):
             line = line.rstrip("\n")
 
             if line.startswith("#fields"):
-                # This line looks like: "#fields\tts\tuid\tid.orig_h\t..."
-                # Split on tabs, drop the "#fields" label itself
                 field_names = line.split("\t")[1:]
                 continue
 
             if line.startswith("#"):
-                continue  # skip all other header/comment lines
+                continue
 
             if not field_names:
-                continue  # haven't seen #fields yet, can't parse safely
+                continue
 
             values = line.split("\t")
             raw_row = dict(zip(field_names, values))
 
+            NUMERIC_FIELDS = {"source.port", "destination.port", "source.bytes", "destination.bytes"}
+
             event = {"log_source": "zeek", "event.action": "network_connection"}
             for zeek_field, ecs_field in FIELD_MAP.items():
                 if zeek_field in raw_row and raw_row[zeek_field] != "-":
-                    event[ecs_field] = raw_row[zeek_field]
+                    value = raw_row[zeek_field]
+                    if ecs_field in NUMERIC_FIELDS:
+                        value = int(value)
+                    event[ecs_field] = value
 
-            # Zeek "ts" is unix epoch seconds (e.g. 1389721044.82) -
-            # convert it into a real ISO timestamp for consistency
-            # with our other 2 parsers.
             if "@timestamp" in event:
                 epoch = float(event["@timestamp"])
                 event["@timestamp"] = datetime.fromtimestamp(epoch, tz=timezone.utc).isoformat()
 
-            events.append(event)
+            events.append(normalize_to_ecs(event))   # <-- normalize BEFORE appending, list stays a list
 
     return events
 
-
 if __name__ == "__main__":
+    client = get_client()
     results = parse_zeek_log(LOG_FILE)
-    print(f"Parsed {len(results)} connection events\n")
-    for event in results[:3]:
-        print(json.dumps(event, indent=2))
+    sent = 0
+    for event in results:
+        send_event(client, event)
+        sent += 1
+    print(f"Sent {sent} zeek events to Elasticsearch")

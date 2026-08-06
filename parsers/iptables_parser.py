@@ -1,6 +1,10 @@
 import re
 import json
+import sys
+sys.path.append("pipeline")
+from es_writer import get_client, send_event
 from datetime import datetime
+from ecs_normalizer import normalize_to_ecs
 
 # The syslog wrapper (timestamp, hostname, kernel prefix) stays
 # consistent, so we grab that with one regex...
@@ -40,15 +44,15 @@ def parse_line(line, current_year=2026):
         "network.bytes": int(kv_pairs["LEN"]) if "LEN" in kv_pairs else None,
         "log_source": "iptables",
     }
-    return event
-
+    return normalize_to_ecs(event)
 
 if __name__ == "__main__":
-    test_lines = [
-        "Aug  6 20:34:29 firewall01 kernel: [1.370000] IPTABLES-DROP: IN=eth0 OUT= SRC=203.0.113.27 DST=10.0.0.50 LEN=60 TTL=64 PROTO=TCP SPT=58128 DPT=23 SYN",
-        "Aug  6 20:34:31 firewall01 kernel: [4.110000] IPTABLES-ACCEPT: IN=eth0 OUT= SRC=203.0.113.132 DST=10.0.0.30 LEN=60 TTL=64 PROTO=TCP SPT=56070 DPT=80 SYN",
-        "garbage line here",
-    ]
-    for line in test_lines:
-        result = parse_line(line)
-        print(json.dumps(result, indent=2) if result else f"NO MATCH: {line}")
+    client = get_client()
+    sent = 0
+    with open("logs/iptables.log") as f:
+        for line in f:
+            event = parse_line(line)
+            if event:
+                send_event(client, event)
+                sent += 1
+    print(f"Sent {sent} iptables events to Elasticsearch")

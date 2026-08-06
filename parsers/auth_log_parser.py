@@ -1,6 +1,10 @@
 import re
 import json
+import sys
+sys.path.append("pipeline")
+from es_writer import get_client, send_event
 from datetime import datetime
+from ecs_normalizer import normalize_to_ecs
 
 # This regex is the actual "translator" — it looks for the exact
 # pattern of a real sshd log line and captures the important parts
@@ -36,15 +40,15 @@ def parse_line(line, current_year=2026):
         "event.action": "ssh_login",
         "log_source": "auth",
     }
-    return event
-
+    return normalize_to_ecs(event)
 
 if __name__ == "__main__":
-    test_lines = [
-        "Aug  6 19:37:30 webserver01 sshd[1001]: Accepted password for svc_backup from 10.0.0.7 port 59215 ssh2",
-        "Aug  6 19:37:31 webserver01 sshd[1002]: Failed password for invalid user admin from 203.0.113.7 port 51422 ssh2",
-        "this is not a valid log line at all",
-    ]
-    for line in test_lines:
-        result = parse_line(line)
-        print(json.dumps(result, indent=2) if result else f"NO MATCH: {line}")
+    client = get_client()
+    sent = 0
+    with open("logs/auth.log") as f:
+        for line in f:
+            event = parse_line(line)
+            if event:
+                send_event(client, event)
+                sent += 1
+    print(f"Sent {sent} auth events to Elasticsearch")
