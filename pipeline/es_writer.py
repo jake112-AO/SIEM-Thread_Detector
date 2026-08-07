@@ -1,5 +1,6 @@
 from elasticsearch import Elasticsearch
 from datetime import datetime, timezone
+from elasticsearch.helpers import bulk
 
 ES_HOST = "http://localhost:9200"
 
@@ -20,6 +21,24 @@ def send_event(es_client, event: dict):
     response = es_client.index(index=index_name, document=event)
     return response
 
+def send_events_bulk(es_client, events: list[dict], batch_size: int = 500):
+    """
+    Sends many events to Elasticsearch efficiently using the bulk API.
+    Groups events by log_source + date into the right index automatically,
+    same naming convention as send_event().
+    """
+    def generate_actions():
+        for event in events:
+            log_source = event.get("log_source", "unknown")
+            date_str = datetime.now(timezone.utc).strftime("%Y.%m.%d")
+            index_name = f"siem-parsed-{log_source}-{date_str}"
+            yield {
+                "_index": index_name,
+                "_source": event,
+            }
+
+    success_count, errors = bulk(es_client, generate_actions(), chunk_size=batch_size, raise_on_error=False)
+    return success_count, errors
 
 if __name__ == "__main__":
     client = get_client()

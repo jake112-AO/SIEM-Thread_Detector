@@ -61,10 +61,8 @@ def parse_zeek_log(path):
     return events
 
 if __name__ == "__main__":
+    from es_writer import send_events_bulk
     client = get_client()
     results = parse_zeek_log(LOG_FILE)
-    sent = 0
-    for event in results:
-        send_event(client, event)
-        sent += 1
-    print(f"Sent {sent} zeek events to Elasticsearch")
+    success, errors = send_events_bulk(client, results)
+    print(f"Bulk sent {success} zeek events ({len(errors)} errors)")

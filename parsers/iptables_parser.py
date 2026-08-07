@@ -47,12 +47,15 @@ def parse_line(line, current_year=2026):
     return normalize_to_ecs(event)
 
 if __name__ == "__main__":
+    from es_writer import send_events_bulk
     client = get_client()
-    sent = 0
+
+    events = []
     with open("logs/iptables.log") as f:
         for line in f:
             event = parse_line(line)
             if event:
-                send_event(client, event)
-                sent += 1
-    print(f"Sent {sent} iptables events to Elasticsearch")
+                events.append(event)
+
+    success, errors = send_events_bulk(client, events)
+    print(f"Bulk sent {success} iptables events ({len(errors)} errors)")
