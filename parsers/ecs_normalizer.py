@@ -1,3 +1,7 @@
+import sys
+sys.path.append("pipeline")
+from geoip import lookup_ip
+
 def normalize_to_ecs(flat_event: dict) -> dict:
     """
     Takes a flat dict with dotted keys like {"source.ip": "1.2.3.4"}
@@ -24,12 +28,34 @@ def normalize_to_ecs(flat_event: dict) -> dict:
         for part in parts[:-1]:
             current = current.setdefault(part, {})
         current[parts[-1]] = value
+    
+    # Figure out once whether this is an internal (private network) or
+    # external (public internet) source IP - both the tagging below and
+    # the GeoIP lookup need this same answer.
+    source_ip = nested.get("source", {}).get("ip")
+    is_internal = None
+    if source_ip:
+        is_internal = (
+            source_ip.startswith("10.") or
+            source_ip.startswith("192.168.") or
+            source_ip.startswith("172.16.") or
+            source_ip.startswith("127.")
+        )
+        nested.setdefault("source", {})["is_internal"] = is_internal
 
-    # A couple of standard ECS bookkeeping fields every event should carry
-    nested.setdefault("ecs", {})["version"] = "8.11.0"
-
+    # Only look up GeoIP for external IPs - internal/private addresses
+    # have no real-world location and would just waste an API call.
+    if source_ip and is_internal is False:
+        geo_data = lookup_ip(source_ip)
+        if geo_data:
+            for key, value in geo_data.items():
+                parts = key.split(".")
+                current = nested
+                for part in parts[:-1]:
+                    current = current.setdefault(part, {})
+                current[parts[-1]] = value
+	
     return nested
-
 
 if __name__ == "__main__":
     import json
@@ -38,7 +64,7 @@ if __name__ == "__main__":
         "log_source": "iptables",
         "event.outcome": "failure",
         "event.action": "firewall_rule",
-        "source.ip": "203.0.113.27",
+        "source.ip": "8.8.8.8",   # real public IP, to prove GeoIP wiring works
         "source.port": 58128,
         "destination.ip": "10.0.0.50",
         "destination.port": 23,
