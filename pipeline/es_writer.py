@@ -1,32 +1,33 @@
+import hashlib
+import json
+
 from elasticsearch import Elasticsearch
 from datetime import datetime, timezone
 from elasticsearch.helpers import bulk
 
 ES_HOST = "http://localhost:9200"
 
+def make_event_id(event: dict) -> str:
+    """
+    Creates a stable, repeatable ID from an event's content, so sending
+    the same event twice (e.g. after re-processing a log line) updates
+    the same document instead of creating a duplicate.
+    """
+    event_str = json.dumps(event, sort_keys=True)
+    return hashlib.sha256(event_str.encode()).hexdigest()
+
 def get_client():
     return Elasticsearch(ES_HOST)
 
 def send_event(es_client, event: dict):
-    """
-    Sends one normalized ECS event into Elasticsearch, into an index
-    named by log_source and today's date - matching the same naming
-    pattern Logstash already uses (siem-<source>-YYYY.MM.dd), but with
-    a "parsed" marker so it never collides with the raw Filebeat data.
-    """
     log_source = event.get("log_source", "unknown")
     date_str = datetime.now(timezone.utc).strftime("%Y.%m.%d")
     index_name = f"siem-parsed-{log_source}-{date_str}"
 
-    response = es_client.index(index=index_name, document=event)
+    response = es_client.index(index=index_name, id=make_event_id(event), document=event)
     return response
 
 def send_events_bulk(es_client, events: list[dict], batch_size: int = 500):
-    """
-    Sends many events to Elasticsearch efficiently using the bulk API.
-    Groups events by log_source + date into the right index automatically,
-    same naming convention as send_event().
-    """
     def generate_actions():
         for event in events:
             log_source = event.get("log_source", "unknown")
@@ -34,6 +35,7 @@ def send_events_bulk(es_client, events: list[dict], batch_size: int = 500):
             index_name = f"siem-parsed-{log_source}-{date_str}"
             yield {
                 "_index": index_name,
+                "_id": make_event_id(event),
                 "_source": event,
             }
 
