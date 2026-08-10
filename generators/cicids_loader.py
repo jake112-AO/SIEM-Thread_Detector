@@ -1,11 +1,7 @@
 import pandas as pd
 import json
+import sys
 
-CSV_PATH = "datasets/TrafficLabelling/Tuesday-WorkingHours.pcap_ISCX.csv"
-OUTPUT_PATH = "logs/cicids/tuesday.json"
-
-# CICIDS columns have sneaky leading spaces, e.g. " Source IP" instead of "Source IP"
-# We only keep the handful of fields that matter for a SIEM view.
 COLUMN_MAP = {
     " Timestamp": "timestamp",
     " Source IP": "src_ip",
@@ -19,11 +15,16 @@ COLUMN_MAP = {
     " Label": "label",
 }
 
-def main():
-    print(f"Reading {CSV_PATH} ...")
-    df = pd.read_csv(CSV_PATH)
+def load_csv(csv_path, output_path):
+    print(f"Reading {csv_path} ...")
+   
+    print(f"Reading {csv_path} ...")
+    try:
+        df = pd.read_csv(csv_path)
+    except UnicodeDecodeError:
+        print("UTF-8 failed, retrying with Windows-1252 encoding...")
+        df = pd.read_csv(csv_path, encoding="cp1252")    
 
-    # Some CICIDS files use slightly different spacing - handle both cases
     df.columns = [c.strip() for c in df.columns]
     rename_map = {k.strip(): v for k, v in COLUMN_MAP.items()}
     df = df.rename(columns=rename_map)
@@ -31,13 +32,20 @@ def main():
     keep_cols = list(rename_map.values())
     df = df[keep_cols]
 
-    print(f"Writing {len(df)} events to {OUTPUT_PATH} ...")
-    with open(OUTPUT_PATH, "w") as f:
+    print(f"Writing {len(df)} events to {output_path} ...")
+    with open(output_path, "w") as f:
         for _, row in df.iterrows():
             event = row.to_dict()
             f.write(json.dumps(event, default=str) + "\n")
 
-    print("Done.")
+    # Quick label breakdown, so we can immediately see attack counts
+    print("Label breakdown:")
+    print(df["label"].value_counts())
+    print("Done.\n")
+
 
 if __name__ == "__main__":
-    main()
+    # Usage: python3 cicids_loader.py <csv_filename> <output_filename>
+    csv_name = sys.argv[1]
+    output_name = sys.argv[2]
+    load_csv(f"datasets/TrafficLabelling/{csv_name}", f"logs/cicids/{output_name}")
