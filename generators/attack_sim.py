@@ -60,9 +60,17 @@ def simulate_port_scan(attacker_ip="203.0.113.77", target_ip="10.0.0.15", num_po
 if __name__ == "__main__":
     scenario = sys.argv[1] if len(sys.argv) > 1 else "both"
 
-    if scenario in ("bruteforce", "both"):
+    if scenario == "chained":
+        # Same attacker IP does recon (port scan) then credential attack
+        # (brute force) - tests T-047's cross-source correlation.
+        chained_ip = "203.0.113.88"
+        simulate_port_scan(attacker_ip=chained_ip)
+        simulate_ssh_bruteforce(attacker_ip=chained_ip)
+    elif scenario in ("bruteforce", "both"):
         simulate_ssh_bruteforce()
-    if scenario in ("portscan", "both"):
+        if scenario == "both":
+            simulate_port_scan()
+    elif scenario == "portscan":
         simulate_port_scan()
 
     print("Attack simulation complete.")
