@@ -6,9 +6,6 @@ from es_writer import get_client, send_event
 from datetime import datetime
 from ecs_normalizer import normalize_to_ecs
 
-# This regex is the actual "translator" — it looks for the exact
-# pattern of a real sshd log line and captures the important parts
-# into named groups.
 LOG_PATTERN = re.compile(
     r"^(?P<timestamp>\w{3}\s+\d{1,2}\s\d{2}:\d{2}:\d{2})\s+"
     r"(?P<hostname>\S+)\s+"
@@ -30,15 +27,15 @@ SUDO_PATTERN = re.compile(
     r"COMMAND=(?P<command>.+)$"
 )
 
+
 def parse_line(line, current_year=2026):
     line = line.strip()
 
-    # Try SSH login pattern first (most common case)
     match = LOG_PATTERN.match(line)
     if match:
         fields = match.groupdict()
         ts = datetime.strptime(f"{current_year} {fields['timestamp']}", "%Y %b %d %H:%M:%S")
-        return {
+        return normalize_to_ecs({
             "@timestamp": ts.isoformat(),
             "host.name": fields["hostname"],
             "process.pid": int(fields["pid"]),
@@ -48,14 +45,13 @@ def parse_line(line, current_year=2026):
             "source.port": int(fields["src_port"]),
             "event.action": "ssh_login",
             "log_source": "auth",
-        }
+        })
 
-    # Try useradd pattern
     match = USERADD_PATTERN.match(line)
     if match:
         fields = match.groupdict()
         ts = datetime.strptime(f"{current_year} {fields['timestamp']}", "%Y %b %d %H:%M:%S")
-        return {
+        return normalize_to_ecs({
             "@timestamp": ts.isoformat(),
             "host.name": fields["hostname"],
             "process.pid": int(fields["pid"]),
@@ -64,14 +60,13 @@ def parse_line(line, current_year=2026):
             "event.action": "user_account_created",
             "event.outcome": "success",
             "log_source": "auth",
-        }
+        })
 
-    # Try sudo pattern
     match = SUDO_PATTERN.match(line)
     if match:
         fields = match.groupdict()
         ts = datetime.strptime(f"{current_year} {fields['timestamp']}", "%Y %b %d %H:%M:%S")
-        return {
+        return normalize_to_ecs({
             "@timestamp": ts.isoformat(),
             "host.name": fields["hostname"],
             "user.name": fields["user"],
@@ -79,9 +74,10 @@ def parse_line(line, current_year=2026):
             "event.action": "sudo_command",
             "event.outcome": "success",
             "log_source": "auth",
-        }
+        })
 
-    return None  # nothing matched
+    return None
+
 
 if __name__ == "__main__":
     test_lines = [
