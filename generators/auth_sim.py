@@ -10,7 +10,7 @@ HOSTNAME = "webserver01"
 def make_log_line(pid):
     now = datetime.now(timezone.utc).strftime("%b %e %H:%M:%S")
     port = random.randint(40000, 60000)
-    ip = f"10.0.0.{random.randint(2, 50)}"
+    ip = f"10.0.{random.randint(0, 5)}.{random.randint(2, 254)}"
 
     # Mostly real users logging in (success/fail), occasionally a bot
     # trying random invalid usernames (that's our "attack flavor" case).
