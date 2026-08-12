@@ -1,0 +1,24 @@
+title: Port Scan - Connection Attempt (Base Event)
+id: 4c8d1e6a-2f5b-4a9d-8e3c-7b1f9a4d6e2c
+status: test
+description: Detects a single blocked connection attempt via iptables. Intended as the base event for a frequency-based correlation (T-045/T-047) that flags a single source IP hitting many distinct destination ports within a short window - the actual signature of a port scan.
+references:
+  - https://attack.mitre.org/techniques/T1046/
+author: Jiahao Liu
+date: 2026-08-11
+tags:
+  - attack.discovery
+  - attack.t1046
+logsource:
+  category: firewall
+  product: iptables
+detection:
+  selection:
+    log_source: iptables
+    event.outcome: failure
+    rule.name: IPTABLES-DROP
+  condition: selection
+falsepositives:
+  - Misconfigured clients retrying blocked connections
+  - Legitimate vulnerability scanning by internal security tools
+level: medium

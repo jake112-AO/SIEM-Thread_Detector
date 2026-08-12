@@ -1,0 +1,22 @@
+title: Web Attack Detected in Network Flow Data
+id: 6c9e2b4a-8f1d-4a6c-9e3b-2d7a4c8f1e6b
+status: test
+description: Detects network flows labeled as a web-based attack (XSS, SQL injection, or brute force) against a web server. Validated against the CICIDS-2017 labeled dataset rather than a live behavioral simulation, since this project's attack simulator does not currently generate live web-scanning traffic.
+references:
+  - https://attack.mitre.org/techniques/T1595.002/
+author: Jiahao Liu
+date: 2026-08-11
+tags:
+  - attack.reconnaissance
+  - attack.t1595.002
+logsource:
+  category: network
+  product: cicids
+detection:
+  selection:
+    log_source: cicids
+    label|contains: 'Web Attack'
+  condition: selection
+falsepositives:
+  - None expected - based on labeled ground-truth attack data
+level: high

@@ -1,0 +1,23 @@
+title: New User Account Created
+id: 5a8c2e6f-1d4b-4a9e-8c3f-7b2d9a1e5c4f
+status: test
+description: Detects creation of a new local user account via useradd. Attackers commonly create backdoor accounts to maintain persistent access after initial compromise.
+references:
+  - https://attack.mitre.org/techniques/T1136/001/
+author: Jiahao Liu
+date: 2026-08-11
+tags:
+  - attack.persistence
+  - attack.t1136.001
+logsource:
+  category: authentication
+  product: linux
+  service: auth
+detection:
+  selection:
+    log_source: auth
+    event.action: user_account_created
+  condition: selection
+falsepositives:
+  - Legitimate administrator onboarding a new employee
+level: medium

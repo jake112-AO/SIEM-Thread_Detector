@@ -1,0 +1,21 @@
+title: Successful Login Following Brute Force Attempts
+id: 2b6e9c4a-8f1d-4e3a-9c7b-6d2f8a4e1c9b
+status: test
+description: Detects a successful SSH login occurring shortly after multiple failed login attempts from the same source IP - a strong indicator that a brute force attack succeeded.
+references:
+  - https://attack.mitre.org/techniques/T1110/
+author: Jiahao Liu
+date: 2026-08-11
+correlation:
+  type: temporal
+  rules:
+    - 7f3e9a2c-1b4d-4e6f-8a9c-2d5e7f8b1c3a   # auth_ssh_bruteforce.yml (failures)
+    - 9d2a6f1b-3e7c-4a8d-9f1e-5b3c8a2d6e4f   # auth_ssh_success.yml (success)
+  group-by:
+    - source.ip
+  timespan: 5m
+  ordered: true
+tags:
+  - attack.credential_access
+  - attack.t1110
+level: high

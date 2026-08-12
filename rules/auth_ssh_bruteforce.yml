@@ -1,0 +1,25 @@
+title: SSH Brute Force - Failed Login Attempt
+id: 7f3e9a2c-1b4d-4e6f-8a9c-2d5e7f8b1c3a
+status: test
+description: Detects a single failed SSH login attempt. Intended to be used as the base event for a frequency-based correlation (see T-045) that flags repeated failures from the same source IP within a short window.
+references:
+  - https://attack.mitre.org/techniques/T1110/001/
+author: Jiahao Liu
+date: 2026-08-11
+tags:
+  - attack.credential_access
+  - attack.t1110.001
+logsource:
+  category: authentication
+  product: linux
+  service: auth
+detection:
+  selection:
+    log_source: auth
+    event.action: ssh_login
+    event.outcome: failure
+  condition: selection
+falsepositives:
+  - Legitimate users mistyping their password
+  - Automated scripts with expired credentials
+level: medium

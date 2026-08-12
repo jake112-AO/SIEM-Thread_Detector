@@ -1,0 +1,23 @@
+title: Sudo Command Executed
+id: 8f4b1d6c-2e9a-4c7f-8b3d-1e6a9c4f2b8d
+status: test
+description: Detects execution of a command via sudo. On its own this is often benign administrative activity, but frequency spikes or unusual commands (e.g. reading /etc/shadow) can indicate privilege escalation.
+references:
+  - https://attack.mitre.org/techniques/T1548.003/
+author: Jiahao Liu
+date: 2026-08-11
+tags:
+  - attack.privilege_escalation
+  - attack.t1548.003
+logsource:
+  category: authentication
+  product: linux
+  service: auth
+detection:
+  selection:
+    log_source: auth
+    event.action: sudo_command
+  condition: selection
+falsepositives:
+  - Routine legitimate administrative activity
+level: low
