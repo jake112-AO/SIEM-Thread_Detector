@@ -1,0 +1,73 @@
+{
+  "5a8c2e6f-1d4b-4a9e-8c3f-7b2d9a1e5c4f": {
+    "title": "New User Account Created",
+    "file": "auth_new_user_account.yml",
+    "level": "medium",
+    "query": "log_source:auth AND event.action:user_account_created",
+    "tags": [
+      "attack.persistence",
+      "attack.t1136.001"
+    ]
+  },
+  "7f3e9a2c-1b4d-4e6f-8a9c-2d5e7f8b1c3a": {
+    "title": "SSH Brute Force - Failed Login Attempt",
+    "file": "auth_ssh_bruteforce.yml",
+    "level": "medium",
+    "query": "log_source:auth AND event.action:ssh_login AND event.outcome:failure",
+    "tags": [
+      "attack.credential_access",
+      "attack.t1110.001"
+    ]
+  },
+  "9d2a6f1b-3e7c-4a8d-9f1e-5b3c8a2d6e4f": {
+    "title": "SSH Successful Login (Base Event)",
+    "file": "auth_ssh_success.yml",
+    "level": "low",
+    "query": "log_source:auth AND event.action:ssh_login AND event.outcome:success",
+    "tags": [
+      "attack.credential_access",
+      "attack.t1110"
+    ]
+  },
+  "8f4b1d6c-2e9a-4c7f-8b3d-1e6a9c4f2b8d": {
+    "title": "Sudo Command Executed",
+    "file": "auth_sudo_escalation.yml",
+    "level": "low",
+    "query": "log_source:auth AND event.action:sudo_command",
+    "tags": [
+      "attack.privilege_escalation",
+      "attack.t1548.003"
+    ]
+  },
+  "3e7a9c1d-6f2b-4e8a-9c4d-8b1f6a2e9c7d": {
+    "title": "Suspicious DNS Query - Possible Tunneling",
+    "file": "network_dns_tunneling.yml",
+    "level": "medium",
+    "query": "(log_source:zeek AND event.action:dns_query) AND (NOT dns.question.subdomain_length:<30)",
+    "tags": [
+      "attack.command_and_control",
+      "attack.exfiltration",
+      "attack.t1071.004"
+    ]
+  },
+  "4c8d1e6a-2f5b-4a9d-8e3c-7b1f9a4d6e2c": {
+    "title": "Port Scan - Connection Attempt (Base Event)",
+    "file": "network_port_scan.yml",
+    "level": "medium",
+    "query": "log_source:iptables AND event.outcome:failure AND rule.name:IPTABLES\\-DROP",
+    "tags": [
+      "attack.discovery",
+      "attack.t1046"
+    ]
+  },
+  "6c9e2b4a-8f1d-4a6c-9e3b-2d7a4c8f1e6b": {
+    "title": "Web Attack Detected in Network Flow Data",
+    "file": "web_attack_detected.yml",
+    "level": "high",
+    "query": "log_source:cicids AND label:*Web\\ Attack*",
+    "tags": [
+      "attack.reconnaissance",
+      "attack.t1595.002"
+    ]
+  }
+}
