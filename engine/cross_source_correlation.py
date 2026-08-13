@@ -1,11 +1,14 @@
-from datetime import datetime, timezone, timedelta
-from elasticsearch import Elasticsearch
 import sys
 sys.path.append("engine")
+sys.path.append("pipeline")
+
+from datetime import datetime, timezone, timedelta
+from elasticsearch import Elasticsearch
 from frequency_counter import count_by_field
+from alerting import build_alert, write_alert
 
 
-def find_portscan_ips(client, window_seconds=60, distinct_port_threshold=10):
+def find_portscan_ips(client, window_seconds=90, distinct_port_threshold=10):
     """
     Finds source IPs that hit many DISTINCT destination ports within
     the window - the real signature of a port scan, not just a raw
@@ -36,7 +39,7 @@ def find_portscan_ips(client, window_seconds=60, distinct_port_threshold=10):
     }
 
 
-def find_cross_source_attacks(client, window_seconds=60, failure_threshold=8, distinct_port_threshold=10):
+def find_cross_source_attacks(client, window_seconds=90, failure_threshold=8, distinct_port_threshold=10):
     """
     Cross-source correlation: finds source IPs that show up in BOTH
     the port-scan list AND the SSH brute-force list within the same
@@ -75,7 +78,14 @@ if __name__ == "__main__":
     if not alerts:
         print("No cross-source (port scan + brute force) attacks detected.")
     else:
-        print(f"Found {len(alerts)} cross-source attacks:")
         for a in alerts:
-            print(f"  🚨 {a['source.ip']} — scanned {a['distinct_ports_scanned']} ports, "
-                  f"{a['failed_login_attempts']} failed logins [{a['severity'].upper()}]")
+            alert = build_alert(
+                rule_name="cross_source_portscan_then_bruteforce",
+                severity="critical",
+                source_ip=a["source.ip"],
+                description=f"Port scan ({a['distinct_ports_scanned']} ports) followed by SSH brute force ({a['failed_login_attempts']} failures) from same source",
+                mitre_technique="T1046,T1110.001",
+                extra={"distinct_ports_scanned": a["distinct_ports_scanned"], "failed_login_attempts": a["failed_login_attempts"]},
+            )
+            write_alert(client, alert)
+            print(f"  🚨 Alert written: {a['source.ip']} — CRITICAL cross-source attack")

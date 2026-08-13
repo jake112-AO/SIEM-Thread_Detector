@@ -1,21 +1,19 @@
-from datetime import datetime, timezone, timedelta
-from elasticsearch import Elasticsearch
 import sys
 sys.path.append("engine")
+sys.path.append("pipeline")
+
+from datetime import datetime, timezone, timedelta
+from elasticsearch import Elasticsearch
 from frequency_counter import count_by_field
+from alerting import build_alert, write_alert
 
 
 def find_bruteforce_then_success(client, failure_threshold=8, failure_window=60, success_lookahead=300):
     """
     Two-stage correlation:
-    1. Find source IPs with a suspicious burst of failed SSH logins
-       (reuses our frequency counter from T-045).
+    1. Find source IPs with a suspicious burst of failed SSH logins.
     2. For each of those IPs, check whether a successful login from the
        SAME IP happened within `success_lookahead` seconds afterward.
-
-    This mirrors the Sigma temporal correlation in
-    auth_login_after_bruteforce.yml: group-by source.ip, ordered,
-    failures before success, within a timespan.
     """
     suspicious_ips = count_by_field(
         client,
@@ -32,8 +30,6 @@ def find_bruteforce_then_success(client, failure_threshold=8, failure_window=60,
         ip = entry["key"]
         failure_count = entry["count"]
 
-        # Now check: did this SAME ip also have a successful login,
-        # any time from now back to `success_lookahead` seconds ago?
         since_time = (datetime.now(timezone.utc) - timedelta(seconds=success_lookahead)).isoformat()
         query = (
             f"log_source:auth AND event.action:ssh_login AND event.outcome:success "
@@ -68,7 +64,14 @@ if __name__ == "__main__":
     if not alerts:
         print("No brute-force-then-success patterns detected.")
     else:
-        print(f"Found {len(alerts)} correlated brute-force attacks:")
-        for alert in alerts:
-            print(f"  🚨 {alert['source.ip']} — {alert['failure_count']} failures, "
-                  f"then successful login as '{alert['successful_user']}' at {alert['success_timestamp']}")
+        for a in alerts:
+            alert = build_alert(
+                rule_name="auth_login_after_bruteforce",
+                severity="high",
+                source_ip=a["source.ip"],
+                description=f"{a['failure_count']} failed SSH logins followed by successful login as '{a['successful_user']}'",
+                mitre_technique="T1110",
+                extra={"failure_count": a["failure_count"], "user.name": a["successful_user"]},
+            )
+            write_alert(client, alert)
+            print(f"  🚨 Alert written: {a['source.ip']} — {a['failure_count']} failures then success")
