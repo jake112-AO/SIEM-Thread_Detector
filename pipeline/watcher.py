@@ -17,23 +17,24 @@ WATCHED_LOGS = [
 POLL_INTERVAL_SECONDS = 5
 
 def check_for_new_lines(client, name, path, parser_fn):
-    last_position = get_last_position(name)
+    last_offset = get_last_position(name)
 
-    with open(path) as f:
-        all_lines = f.readlines()
+    with open(path, "r") as f:
+        f.seek(last_offset)          # jump straight to where we left off
+        new_lines = f.readlines()    # only reads from here to end of file
+        new_offset = f.tell()        # remember exactly how far we read
 
-    new_lines = all_lines[last_position:]
     if not new_lines:
-        return 0  # nothing new since last check
+        return 0
 
     events = [parser_fn(line) for line in new_lines]
-    events = [e for e in events if e]  # drop any that failed to parse
+    events = [e for e in events if e]
 
     if events:
         success, errors = send_events_bulk(client, events)
         print(f"[{name}] sent {success} new events ({len(errors)} errors)")
 
-    save_last_position(name, len(all_lines))
+    save_last_position(name, new_offset)
     return len(events)
 
 

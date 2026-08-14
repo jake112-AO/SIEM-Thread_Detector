@@ -15,7 +15,7 @@ logsource:
 detection:
   selection:
     log_source: cicids
-    label|contains: 'Web Attack'
+    label.keyword|contains: 'Web Attack'
   condition: selection
 falsepositives:
   - None expected - based on labeled ground-truth attack data

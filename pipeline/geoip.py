@@ -1,34 +1,30 @@
 import requests
 
-def lookup_ip(ip: str) -> dict | None:
-    """
-    Looks up geographic info for a public IP address using ip-api.com's
-    free API. Returns None for private/reserved IPs (10.x, 192.168.x,
-    etc.) since those have no real-world location - this is expected
-    and correct behavior, not a bug.
+_geo_cache = {}  # simple in-memory cache: ip -> result, avoids repeat API calls for the same IP
 
-    NOTE: In a real production SIEM, you'd typically use a local
-    MaxMind GeoLite2 database file instead of a live API call - it's
-    faster (no network round-trip per lookup), has no rate limits,
-    and still works if your network is air-gapped. We're using the
-    free API here for speed of setup; swapping to a local DB later
-    would only require changing this one function.
-    """
+def lookup_ip(ip: str) -> dict | None:
+    if ip in _geo_cache:
+        return _geo_cache[ip]
+
     try:
         response = requests.get(f"http://ip-api.com/json/{ip}", timeout=3)
         data = response.json()
     except requests.RequestException:
+        _geo_cache[ip] = None
         return None
 
     if data.get("status") != "success":
+        _geo_cache[ip] = None
         return None
 
-    return {
+    result = {
         "geo.country_name": data.get("country"),
         "geo.city_name": data.get("city"),
         "geo.location": {"lat": data.get("lat"), "lon": data.get("lon")},
         "geo.isp": data.get("isp"),
     }
+    _geo_cache[ip] = result
+    return result
 
 
 if __name__ == "__main__":
