@@ -10,20 +10,27 @@ from alerting import build_alert, write_alert
 
 
 def get_combined_ioc_list():
-    """Merges both threat intel sources into one set of known-bad IPs."""
+    """
+    Merges both threat intel sources, but instead of a flat set, keeps
+    track of which feed(s) flagged each IP - this becomes IOC match
+    metadata attached to the alert (T-053), so an analyst can see
+    whether an IP was flagged by one source or corroborated by both.
+    """
     otx_ips = load_otx_ips()
     threatfox_ips = load_threatfox_ips()
-    return otx_ips | threatfox_ips  # set union - either source counts
+
+    ip_sources = {}
+    for ip in otx_ips:
+        ip_sources.setdefault(ip, []).append("AlienVault OTX")
+    for ip in threatfox_ips:
+        ip_sources.setdefault(ip, []).append("Abuse.ch ThreatFox")
+
+    return ip_sources
 
 
 def find_malicious_ip_connections(client, window_seconds=300):
-    """
-    Checks recent traffic (both auth and iptables sources) for any
-    connection involving a source.ip that appears in our combined
-    threat intel list.
-    """
-    ioc_ips = get_combined_ioc_list()
-    if not ioc_ips:
+    ioc_ip_sources = get_combined_ioc_list()
+    if not ioc_ip_sources:
         print("No cached threat intel IPs available - run otx_client.py / threatfox_client.py first.")
         return []
 
@@ -36,7 +43,7 @@ def find_malicious_ip_connections(client, window_seconds=300):
             query={
                 "bool": {
                     "must": [
-                        {"terms": {"source.ip": list(ioc_ips)}},
+                        {"terms": {"source.ip": list(ioc_ip_sources.keys())}},
                         {"range": {"@timestamp": {"gte": since_time}}},
                     ]
                 }
@@ -46,10 +53,12 @@ def find_malicious_ip_connections(client, window_seconds=300):
 
         for hit in response["hits"]["hits"]:
             source = hit["_source"]
+            ip = source.get("source", {}).get("ip")
             matches.append({
-                "source.ip": source.get("source", {}).get("ip"),
+                "source.ip": ip,
                 "log_source": source.get("log_source"),
                 "timestamp": source.get("@timestamp"),
+                "ioc_sources": ioc_ip_sources.get(ip, []),
             })
 
     return matches
@@ -63,14 +72,21 @@ if __name__ == "__main__":
         print("No connections from known malicious IPs detected.")
     else:
         for m in matches:
+            corroborated = len(m["ioc_sources"]) > 1
             alert = build_alert(
                 rule_name="connection_to_known_malicious_ip",
                 severity="critical",
                 source_ip=m["source.ip"],
-                description=f"Traffic observed from IP {m['source.ip']}, which appears in AlienVault OTX / ThreatFox threat intel feeds",
+                description=f"Traffic observed from IP {m['source.ip']}, flagged by: {', '.join(m['ioc_sources'])}"
+                             + (" (corroborated by multiple feeds)" if corroborated else ""),
                 mitre_technique="T1071",
-                extra={"matched_log_source": m["log_source"]},
+                extra={
+                    "matched_log_source": m["log_source"],
+                    "ioc.source_feeds": m["ioc_sources"],
+                    "ioc.type": "ip",
+                    "ioc.corroborated": corroborated,
+                },
             )
             write_alert(client, alert)
-            print(f"  🚨 Alert written: {m['source.ip']} (seen in {m['log_source']} logs)")
+            print(f"  🚨 Alert written: {m['source.ip']} — flagged by {', '.join(m['ioc_sources'])}")
 			
