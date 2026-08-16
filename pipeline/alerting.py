@@ -1,5 +1,8 @@
 import hashlib
 import json
+import sys
+sys.path.append("pipeline")
+from mitre_mapping import get_tactics
 from datetime import datetime, timezone, timedelta
 from elasticsearch import Elasticsearch
 
@@ -30,6 +33,12 @@ def get_time_bucket(minutes: int = DEDUP_COOLDOWN_MINUTES) -> str:
 
 
 def build_alert(rule_name: str, severity: str, source_ip: str, description: str, mitre_technique: str, extra: dict = None):
+    # mitre_technique can be a single ID or comma-joined (e.g. our
+    # cross-source rule) - split into a real array so it's aggregatable
+    # in Kibana, and look up the real tactic(s) it belongs to.
+    technique_ids = [t.strip() for t in mitre_technique.split(",")]
+    tactics = get_tactics(technique_ids)
+
     return {
         "@timestamp": datetime.now(timezone.utc).isoformat(),
         "rule.name": rule_name,
@@ -37,11 +46,11 @@ def build_alert(rule_name: str, severity: str, source_ip: str, description: str,
         "severity_rank": SEVERITY_RANK.get(severity, 0),
         "source.ip": source_ip,
         "description": description,
-        "mitre.technique": mitre_technique,
+        "mitre.technique": technique_ids,
+        "mitre.tactic": tactics,
         "status": "open",
         **(extra or {}),
     }
-
 
 def write_alert(client: Elasticsearch, alert: dict):
     """
