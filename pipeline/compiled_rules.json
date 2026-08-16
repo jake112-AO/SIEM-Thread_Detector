@@ -64,7 +64,7 @@
     "title": "Web Attack Detected in Network Flow Data",
     "file": "web_attack_detected.yml",
     "level": "high",
-    "query": "log_source:cicids AND label:*Web\\ Attack*",
+    "query": "log_source:cicids AND label.keyword:*Web\\ Attack*",
     "tags": [
       "attack.reconnaissance",
       "attack.t1595.002"
