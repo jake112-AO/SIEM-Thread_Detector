@@ -1,5 +1,9 @@
 import json
 import time
+import sys
+import re
+sys.path.append("pipeline")
+from alerting import build_alert, write_alert
 from datetime import datetime, timezone, timedelta
 from elasticsearch import Elasticsearch
 
@@ -15,6 +19,18 @@ RULE_INDEX_MAP = {
     "zeek": "siem-parsed-zeek-*",
     "cicids": "siem-cicids-*",
 }
+
+def extract_technique_id(tags: list[str]) -> str:
+    """
+    Pulls a MITRE technique ID out of Sigma-style tags like
+    'attack.t1110.001' -> 'T1110.001'. Ignores non-technique tags
+    like 'attack.credential_access' (tactic-style tags, not IDs).
+    """
+    for tag in tags:
+        match = re.match(r"attack\.t(\d{4}(?:\.\d{3})?)$", tag, re.IGNORECASE)
+        if match:
+            return f"T{match.group(1)}"
+    return "unknown"
 
 def load_rules():
     with open(COMPILED_RULES_FILE) as f:
@@ -33,12 +49,30 @@ def run_rule(client, rule_id, rule, since_time):
     response = client.search(
         index=index,
         q=full_query,
-        size=20,   # cap how many raw matching docs we pull back per run
+        size=20,
     )
 
     total = response["hits"]["total"]["value"]
     if total > 0:
         print(f"🚨 [{rule['level'].upper()}] {rule['title']} — {total} matches in last {POLL_INTERVAL_SECONDS}s")
+
+        # Grab the source.ip from the first matching doc, if it has one,
+        # so the alert carries real context instead of being IP-less.
+        source_ip = "unknown"
+        if response["hits"]["hits"]:
+            hit_source = response["hits"]["hits"][0]["_source"]
+            source_ip = hit_source.get("source", {}).get("ip", "unknown")
+
+        alert = build_alert(
+            rule_name=rule["title"],
+            severity=rule["level"],
+            source_ip=source_ip,
+            description=f"{total} events matched '{rule['title']}' in the last {POLL_INTERVAL_SECONDS} seconds",
+            mitre_technique=extract_technique_id(rule.get("tags", [])),
+            extra={"match_count": total},
+        )
+        write_alert(client, alert)
+
     return total
 
 
