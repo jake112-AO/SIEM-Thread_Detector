@@ -58,6 +58,14 @@ MAPPINGS = {
                 "name": {"type": "keyword"}
             }
         },
+        "geo": {
+            "properties": {
+                "location": {"type": "geo_point"},
+                "country_name": {"type": "keyword"},
+                "city_name": {"type": "keyword"},
+                "isp": {"type": "keyword"},
+            }
+        },
     }
 }
 
