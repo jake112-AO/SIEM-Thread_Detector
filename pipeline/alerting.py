@@ -38,6 +38,19 @@ def build_alert(rule_name: str, severity: str, source_ip: str, description: str,
     # in Kibana, and look up the real tactic(s) it belongs to.
     technique_ids = [t.strip() for t in mitre_technique.split(",")]
     tactics = get_tactics(technique_ids)
+    
+    # Determine if the source IP is internal/private, same logic used
+    # in ecs_normalizer.py - lets dashboards easily filter attacker
+    # IPs (external) from routine internal activity (account creation,
+    # sudo usage, etc. from our own office IP ranges).
+    is_internal = None
+    if source_ip and source_ip != "unknown":
+        is_internal = (
+            source_ip.startswith("10.") or
+            source_ip.startswith("192.168.") or
+            source_ip.startswith("172.16.") or
+            source_ip.startswith("127.")
+        )
 
     return {
         "@timestamp": datetime.now(timezone.utc).isoformat(),
@@ -45,6 +58,7 @@ def build_alert(rule_name: str, severity: str, source_ip: str, description: str,
         "severity": severity,
         "severity_rank": SEVERITY_RANK.get(severity, 0),
         "source.ip": source_ip,
+        "source.is_internal": is_internal,
         "description": description,
         "mitre.technique": technique_ids,
         "mitre.tactic": tactics,
