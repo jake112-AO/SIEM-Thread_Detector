@@ -1,0 +1,93 @@
+{
+  "name": "SIEM Detection Coverage",
+  "versions": {
+    "attack": "15",
+    "navigator": "4.9.1",
+    "layer": "4.5"
+  },
+  "domain": "enterprise-attack",
+  "description": "Real detection coverage generated from live alert data on 2026-08-21. Score = number of times each technique fired in this SIEM's testing.",
+  "filters": {
+    "platforms": [
+      "Linux"
+    ]
+  },
+  "sorting": 3,
+  "layout": {
+    "layout": "side",
+    "showID": true,
+    "showName": true
+  },
+  "hideDisabled": false,
+  "techniques": [
+    {
+      "techniqueID": "T1110",
+      "score": 11,
+      "color": "",
+      "comment": "Detected 11 time(s) by this SIEM's detection rules",
+      "enabled": true,
+      "metadata": [],
+      "showSubtechniques": false
+    },
+    {
+      "techniqueID": "T1110.001",
+      "score": 11,
+      "color": "",
+      "comment": "Detected 11 time(s) by this SIEM's detection rules",
+      "enabled": true,
+      "metadata": [],
+      "showSubtechniques": false
+    },
+    {
+      "techniqueID": "T1046",
+      "score": 1,
+      "color": "",
+      "comment": "Detected 1 time(s) by this SIEM's detection rules",
+      "enabled": true,
+      "metadata": [],
+      "showSubtechniques": false
+    },
+    {
+      "techniqueID": "T1071",
+      "score": 1,
+      "color": "",
+      "comment": "Detected 1 time(s) by this SIEM's detection rules",
+      "enabled": true,
+      "metadata": [],
+      "showSubtechniques": false
+    },
+    {
+      "techniqueID": "T1136.001",
+      "score": 1,
+      "color": "",
+      "comment": "Detected 1 time(s) by this SIEM's detection rules",
+      "enabled": true,
+      "metadata": [],
+      "showSubtechniques": false
+    },
+    {
+      "techniqueID": "T1548.003",
+      "score": 1,
+      "color": "",
+      "comment": "Detected 1 time(s) by this SIEM's detection rules",
+      "enabled": true,
+      "metadata": [],
+      "showSubtechniques": false
+    }
+  ],
+  "gradient": {
+    "colors": [
+      "#ffffff",
+      "#66b1ff",
+      "#0d4a90"
+    ],
+    "minValue": 0,
+    "maxValue": 11
+  },
+  "legendItems": [],
+  "metadata": [],
+  "showTacticRowBackground": true,
+  "tacticRowBackground": "#dddddd",
+  "selectTechniquesAcrossTactics": true,
+  "selectSubtechniquesWithParent": false
+}
