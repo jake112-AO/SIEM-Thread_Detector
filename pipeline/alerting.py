@@ -1,10 +1,12 @@
 import hashlib
 import json
 import sys
+
 sys.path.append("pipeline")
 from mitre_mapping import get_tactics
 from datetime import datetime, timezone, timedelta
 from elasticsearch import Elasticsearch
+from slack_notifier import send_slack_alert
 
 ES_HOST = "http://localhost:9200"
 ALERTS_INDEX_PREFIX = "siem-alerts"
@@ -28,17 +30,26 @@ def get_time_bucket(minutes: int = DEDUP_COOLDOWN_MINUTES) -> str:
     """Rounds the current time down to the nearest `minutes`-minute bucket."""
     now = datetime.now(timezone.utc)
     bucket_minute = (now.minute // minutes) * minutes
-    bucket_time = now.replace(minute=0, second=0, microsecond=0) + timedelta(minutes=bucket_minute)
+    bucket_time = now.replace(minute=0, second=0, microsecond=0) + timedelta(
+        minutes=bucket_minute
+    )
     return bucket_time.isoformat()
 
 
-def build_alert(rule_name: str, severity: str, source_ip: str, description: str, mitre_technique: str, extra: dict = None):
+def build_alert(
+    rule_name: str,
+    severity: str,
+    source_ip: str,
+    description: str,
+    mitre_technique: str,
+    extra: dict = None,
+):
     # mitre_technique can be a single ID or comma-joined (e.g. our
     # cross-source rule) - split into a real array so it's aggregatable
     # in Kibana, and look up the real tactic(s) it belongs to.
     technique_ids = [t.strip() for t in mitre_technique.split(",")]
     tactics = get_tactics(technique_ids)
-    
+
     # Determine if the source IP is internal/private, same logic used
     # in ecs_normalizer.py - lets dashboards easily filter attacker
     # IPs (external) from routine internal activity (account creation,
@@ -46,10 +57,10 @@ def build_alert(rule_name: str, severity: str, source_ip: str, description: str,
     is_internal = None
     if source_ip and source_ip != "unknown":
         is_internal = (
-            source_ip.startswith("10.") or
-            source_ip.startswith("192.168.") or
-            source_ip.startswith("172.16.") or
-            source_ip.startswith("127.")
+            source_ip.startswith("10.")
+            or source_ip.startswith("192.168.")
+            or source_ip.startswith("172.16.")
+            or source_ip.startswith("127.")
         )
 
     return {
@@ -66,6 +77,7 @@ def build_alert(rule_name: str, severity: str, source_ip: str, description: str,
         **(extra or {}),
     }
 
+
 def write_alert(client: Elasticsearch, alert: dict):
     """
     Writes an alert to today's alerts index, using a dedup-aware ID -
@@ -80,6 +92,12 @@ def write_alert(client: Elasticsearch, alert: dict):
     alert_id = make_alert_id(alert["rule.name"], alert["source.ip"], bucket)
 
     response = client.index(index=index_name, id=alert_id, document=alert)
+
+    # Only ping Slack for newly created critical alerts. Dedup updates
+    # in the same cooldown window should not page repeatedly.
+    if alert.get("severity") == "critical" and response.get("result") == "created":
+        send_slack_alert(alert)
+
     return response
 
 
