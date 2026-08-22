@@ -6,7 +6,7 @@
     "layer": "4.5"
   },
   "domain": "enterprise-attack",
-  "description": "Real detection coverage generated from live alert data on 2026-08-21. Score = number of times each technique fired in this SIEM's testing.",
+  "description": "Real detection coverage generated from live alert data on 2026-08-22. Score = number of times each technique fired in this SIEM's testing.",
   "filters": {
     "platforms": [
       "Linux"
@@ -14,9 +14,10 @@
   },
   "sorting": 3,
   "layout": {
-    "layout": "side",
+    "\t\t\tlayout": "side",
     "showID": true,
-    "showName": true
+    "showName": true,
+    "expandedSubtechniques": "all"
   },
   "hideDisabled": false,
   "techniques": [

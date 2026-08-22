@@ -54,9 +54,10 @@ def build_navigator_layer(technique_counts: dict):
         "filters": {"platforms": ["Linux"]},
         "sorting": 3,  # sort by score descending
         "layout": {
-            "layout": "side",
+ "			layout": "side",
             "showID": True,
             "showName": True,
+            "expandedSubtechniques": "all",
         },
         "hideDisabled": False,
         "techniques": techniques,
