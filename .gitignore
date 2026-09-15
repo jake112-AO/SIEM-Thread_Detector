@@ -6,3 +6,4 @@ __pycache__/
 .DS_Store
 pipeline/.state/
 .env
+Document.md
