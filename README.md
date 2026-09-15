@@ -1,4 +1,4 @@
-# 🛡️ SIEM — Threat Detection & Correlation Engine
+# SIEM — Threat Detection & Correlation Engine
 
 A full-stack Security Information and Event Management (SIEM) system built from scratch — ingesting real and simulated security events, detecting attacks mapped to MITRE ATT&CK, correlating multi-stage threats, and alerting in real time.
 
@@ -6,7 +6,7 @@ A full-stack Security Information and Event Management (SIEM) system built from 
 
 ---
 
-## 🎯 What this does
+## What this does
 
 - Ingests **4 log sources**: Linux SSH auth logs, iptables firewall logs, real Zeek network captures, and the CICIDS-2017 labeled attack research dataset (1.5M+ events total)
 - Normalizes everything into a shared **ECS (Elastic Common Schema)** format via 4 custom parsers, so detection rules never care which source an event came from
@@ -20,7 +20,7 @@ A full-stack Security Information and Event Management (SIEM) system built from 
 
 ---
 
-## 🏗️ Architecture
+## Architecture
 
 ```mermaid
 flowchart TD
@@ -59,12 +59,9 @@ flowchart TD
     AL --> KB["Kibana SOC Dashboard"]
     AL --> SL["Slack (critical only)"]
 ```
-
-*(Full step-by-step trace with real example data in [`docs/SIEM_COMPLETE_GUIDE.md`](docs/SIEM_COMPLETE_GUIDE.md))*
-
 ---
 
-## 🧰 Tech Stack
+## Tech Stack
 
 | Layer | Tools |
 |---|---|
@@ -78,7 +75,7 @@ flowchart TD
 
 ---
 
-## 📸 Screenshots
+## Screenshots
 
 | SOC Dashboard | Alert Detail | MITRE ATT&CK Coverage |
 |---|---|---|
@@ -86,7 +83,7 @@ flowchart TD
 
 ---
 
-## 🚀 Quick Start
+## Quick Start
 
 ```bash
 git clone <your-repo-url> SIEM && cd SIEM
@@ -124,7 +121,7 @@ Full setup guide with troubleshooting: [`docs/SIEM_COMPLETE_GUIDE.md`](docs/SIEM
 
 ---
 
-## 🗂️ Project Structure
+## Project Structure
 
 ```
 SIEM/
@@ -148,7 +145,3 @@ python3 pipeline/validate_all_rules.py    # full end-to-end detection validation
 ```
 
 ---
-
-## 📖 Documentation
-
-A complete, deeply-detailed project guide — architecture, every file's role, real bugs encountered and fixed, system limits, and a glossary — lives in [`docs/SIEM_COMPLETE_GUIDE.md`](docs/SIEM_COMPLETE_GUIDE.md).
