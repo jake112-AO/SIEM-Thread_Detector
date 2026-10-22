@@ -79,7 +79,7 @@ flowchart TD
 
 | SOC Dashboard | Alert Detail | MITRE ATT&CK Coverage |
 |---|---|---|
-| ![Dashboard](./assets/Dashboard.png)| ![Alert](docs/screenshots/alert_view.png) | ![Heatmap](docs/mitre_coverage_heatmap.svg) |
+| ![Dashboard](./assests/Dashboard.png)| ![Alert](docs/screenshots/alert_view.png) | ![Heatmap](docs/mitre_coverage_heatmap.svg) |
 
 ---
 
